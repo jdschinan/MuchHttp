@@ -2,7 +2,7 @@
 
 public class ConsoleProgressBar : IProgress
 {
-    public int Width { get; init; }
+    public required int Width { get; init; }
 
     public void Report(int current, int total)
     {
