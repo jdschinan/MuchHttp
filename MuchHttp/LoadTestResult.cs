@@ -4,20 +4,20 @@ public class LoadTestResult
 {
     private readonly IReadOnlyCollection<RequestResult> _requestResults;
     private readonly List<double> _sortedRequestMilliseconds;
-    
+
     public int SuccessfulRequests { get; }
 
     public LoadTestResult(IReadOnlyCollection<RequestResult> requestResults)
     {
         if (requestResults.Count == 0)
             throw new ArgumentException("Must provide at least one request result.", nameof(requestResults));
-        
+
         _requestResults = requestResults;
         _sortedRequestMilliseconds = requestResults
             .Select(requestResult => requestResult.Timing.TotalMilliseconds)
+            .Order()
             .ToList();
-        _sortedRequestMilliseconds.Sort();
-        
+
         SuccessfulRequests = _requestResults.Count(requestResult => requestResult.IsSuccessful);
     }
 
