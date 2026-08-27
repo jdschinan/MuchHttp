@@ -1,13 +1,29 @@
 ﻿using System.CommandLine;
+using System.CommandLine.Parsing;
 using System.Globalization;
 using MuchHttp;
 using MuchHttp.Visualization;
 
 CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
 
-var urlOption = RequiredOption<Uri>("-u", "--url", "URL", "The URL to direct all HTTP requests to");
-var concurrentRequestsOption = RequiredOption<int>("-c", "--concurrent", "concurrent requests", "The maximum number of concurrently sent requests");
-var totalRequestsOption = RequiredOption<int>("-n", "--total", "total requests", "The total number of requests to send");
+var urlOption = new Option<Uri>("--url", "-u")
+{
+    Description = "The URL to direct all HTTP requests to",
+    HelpName = "URL",
+    CustomParser = ParseUri
+};
+
+var concurrentRequestsOption = new Option<int>("--concurrent", "-c")
+{
+    Description = "The maximum number of concurrently sent requests",
+    HelpName = "concurrent requests"
+};
+
+var totalRequestsOption = new Option<int>("--total", "-n")
+{
+    Description = "The total number of requests to send",
+    HelpName = "total requests"
+};
 
 var rootCommand = new RootCommand("Perform HTTP GET requests against a specified URL with a configurable level of concurrency.")
 {
@@ -16,9 +32,13 @@ var rootCommand = new RootCommand("Perform HTTP GET requests against a specified
     totalRequestsOption
 };
 
-rootCommand.SetHandler(PerformAsync, urlOption, concurrentRequestsOption, totalRequestsOption);
-return await rootCommand.InvokeAsync(args);
+rootCommand.SetAction(parseResult => PerformAsync(
+    parseResult.GetRequiredValue(urlOption),
+    parseResult.GetRequiredValue(concurrentRequestsOption),
+    parseResult.GetRequiredValue(totalRequestsOption)
+));
 
+return await rootCommand.Parse(args).InvokeAsync();
 
 async Task PerformAsync(Uri url, int concurrentRequests, int totalRequests)
 {
@@ -39,7 +59,7 @@ async Task PerformAsync(Uri url, int concurrentRequests, int totalRequests)
             block.WriteProperty("Failed requests", loadTestResult.FailedRequests);
             block.WriteProperty("Average", $"{loadTestResult.AverageMilliseconds:N2} ms");
             block.WriteProperty("Median", $"{loadTestResult.MedianMilliseconds:N2} ms");
-            block.WriteProperty("Min", $"{loadTestResult.MinMilliseconds:N2} ms"); 
+            block.WriteProperty("Min", $"{loadTestResult.MinMilliseconds:N2} ms");
             block.WriteProperty("Max", $"{loadTestResult.MaxMilliseconds:N2} ms");
         });
 
@@ -63,12 +83,11 @@ async Task PerformAsync(Uri url, int concurrentRequests, int totalRequests)
     }
 }
 
-static Option<T> RequiredOption<T>(string alias, string name, string helpName, string description)
+Uri ParseUri(ArgumentResult result)
 {
-    return new Option<T>(new[] { alias }, description)
-    {
-        Name = name,
-        ArgumentHelpName = helpName,
-        IsRequired = true
-    };
+    if (Uri.TryCreate(result.Tokens.Single().Value, UriKind.Absolute, out var uri))
+        return uri;
+
+    result.AddError("Invalid URL format.");
+    return null!;
 }
