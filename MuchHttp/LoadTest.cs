@@ -16,8 +16,8 @@ public class LoadTest(HttpClient httpClient, Uri url, int concurrentRequests, in
 
         var updateProgressTask = UpdateProgressAsync();
         var workerTasks = Enumerable.Repeat(ProcessRequestsAsync, _concurrentRequests)
-                .Select(taskFactory => taskFactory.Invoke())
-                .ToArray();
+            .Select(taskFactory => taskFactory.Invoke())
+            .ToArray();
 
         await Task.WhenAll(workerTasks);
         await updateProgressTask;
