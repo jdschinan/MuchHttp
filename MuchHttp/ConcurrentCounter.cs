@@ -1,16 +1,8 @@
 ﻿namespace MuchHttp;
 
-public class ConcurrentCounter
+public class ConcurrentCounter(int initialValue)
 {
-    private int _value;
+    private int _value = initialValue;
 
-    public ConcurrentCounter(int initialValue)
-    {
-        _value = initialValue;
-    }
-
-    public bool TryDecrement()
-    {
-        return Interlocked.Decrement(ref _value) >= 0;
-    }
+    public bool TryDecrement() => Interlocked.Decrement(ref _value) >= 0;
 }

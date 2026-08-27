@@ -3,28 +3,17 @@ using System.Diagnostics;
 
 namespace MuchHttp;
 
-public class LoadTest
+public class LoadTest(HttpClient httpClient, Uri url, int concurrentRequests, int totalRequests)
 {
     private const int UpdateProgressIntervalMilliseconds = 100;
-    
-    private readonly HttpClient _httpClient;
-    private readonly Uri _url;
-    private readonly int _concurrentRequests;
-    private readonly int _totalRequests;
 
-    public LoadTest(HttpClient httpClient, Uri url, int concurrentRequests, int totalRequests)
-    {
-        _httpClient = httpClient;
-        _url = url;
-        _concurrentRequests = Math.Min(concurrentRequests, totalRequests);
-        _totalRequests = totalRequests;
-    }
+    private readonly int _concurrentRequests = Math.Min(concurrentRequests, totalRequests);
 
     public async Task<LoadTestResult> PerformAsync(IProgress progress)
     {
-        var remainingRequests = new ConcurrentCounter(_totalRequests);
+        var remainingRequests = new ConcurrentCounter(totalRequests);
         var requestResults = new ConcurrentBag<RequestResult>();
-        
+
         var updateProgressTask = UpdateProgressAsync();
         var workerTasks = Enumerable.Repeat(ProcessRequestsAsync, _concurrentRequests)
                 .Select(taskFactory => taskFactory.Invoke())
@@ -34,7 +23,7 @@ public class LoadTest
         await updateProgressTask;
 
         return new LoadTestResult(requestResults);
-        
+
         async Task ProcessRequestsAsync()
         {
             while (remainingRequests.TryDecrement())
@@ -47,13 +36,13 @@ public class LoadTest
         async Task UpdateProgressAsync()
         {
             await Task.Delay(UpdateProgressIntervalMilliseconds);
-            while (requestResults.Count < _totalRequests)
+            while (requestResults.Count < totalRequests)
             {
-                progress.Report(requestResults.Count, _totalRequests);
+                progress.Report(requestResults.Count, totalRequests);
                 await Task.Delay(UpdateProgressIntervalMilliseconds);
             }
 
-            progress.Report(_totalRequests, _totalRequests);
+            progress.Report(totalRequests, totalRequests);
             progress.Complete();
         }
     }
@@ -63,13 +52,12 @@ public class LoadTest
         var stopwatch = Stopwatch.StartNew();
         try
         {
-            var response = await _httpClient.GetAsync(_url);
+            var response = await httpClient.GetAsync(url);
             stopwatch.Stop();
 
-            if (response.IsSuccessStatusCode)
-                return new RequestResult(stopwatch.Elapsed);
-
-            return new RequestResult(stopwatch.Elapsed, $"HTTP status {(int)response.StatusCode}");
+            return response.IsSuccessStatusCode ?
+                new RequestResult(stopwatch.Elapsed) :
+                new RequestResult(stopwatch.Elapsed, $"HTTP status {(int)response.StatusCode}");
         }
         catch (Exception exception)
         {

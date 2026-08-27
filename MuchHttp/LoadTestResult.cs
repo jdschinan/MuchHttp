@@ -13,10 +13,12 @@ public class LoadTestResult
             throw new ArgumentException("Must provide at least one request result.", nameof(requestResults));
 
         _requestResults = requestResults;
-        _sortedRequestMilliseconds = requestResults
-            .Select(requestResult => requestResult.Timing.TotalMilliseconds)
-            .Order()
-            .ToList();
+        _sortedRequestMilliseconds =
+        [
+            .. requestResults
+                .Select(requestResult => requestResult.Timing.TotalMilliseconds)
+                .Order()
+        ];
 
         SuccessfulRequests = _requestResults.Count(requestResult => requestResult.IsSuccessful);
     }

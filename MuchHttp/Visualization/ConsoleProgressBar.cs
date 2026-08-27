@@ -1,6 +1,6 @@
 ﻿namespace MuchHttp.Visualization;
 
-public class ConsoleProgressBar : IProgress
+public sealed class ConsoleProgressBar : IProgress
 {
     public required int Width { get; init; }
 
@@ -12,8 +12,5 @@ public class ConsoleProgressBar : IProgress
         Console.Write($"\r[{progressChars}] {progressText}");
     }
 
-    public void Complete()
-    {
-        Console.Write("\n\n");
-    }
+    public void Complete() => Console.Write("\n\n");
 }

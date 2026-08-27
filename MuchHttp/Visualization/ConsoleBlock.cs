@@ -23,11 +23,11 @@ public class ConsoleBlock
     public void WriteProperty(string property, object value)
     {
         if (property.Length > _maxPropertyWidth)
-            property = property.Substring(0, _maxPropertyWidth - EllipsisChars);
+            property = property[..(_maxPropertyWidth - EllipsisChars)];
 
         Console.WriteLine($" {property.PadRight(_maxPropertyWidth, '.')}: {value}");
     }
-    
+
     public static void FromHeading(string heading)
     {
         Console.WriteLine(heading);
@@ -39,7 +39,7 @@ public class ConsoleBlock
         Console.WriteLine($"{exception.GetType().Name}: {exception.Message}");
         Console.WriteLine();
     }
-    
+
     public static void Colored(ConsoleColor color, Action consoleAction)
     {
         var previousColor = Console.ForegroundColor;
