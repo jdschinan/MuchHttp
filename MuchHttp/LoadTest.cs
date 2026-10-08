@@ -1,68 +1,77 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics;
 
-namespace MuchHttp;
-
-public class LoadTest(HttpClient httpClient, Uri url, int concurrentRequests, int totalRequests)
+namespace MuchHttp
 {
-    private const int UpdateProgressIntervalMilliseconds = 100;
-
-    private readonly int _concurrentRequests = Math.Min(concurrentRequests, totalRequests);
-
-    public async Task<LoadTestResult> PerformAsync(IProgress progress)
+    public class LoadTest(HttpClient httpClient, Uri url, int concurrentRequests, int totalRequests)
     {
-        var remainingRequests = new ConcurrentCounter(totalRequests);
-        var requestResults = new ConcurrentBag<RequestResult>();
+        private const int UpdateProgressIntervalMilliseconds = 100;
 
-        var updateProgressTask = UpdateProgressAsync();
-        var workerTasks = Enumerable.Repeat(ProcessRequestsAsync, _concurrentRequests)
-            .Select(taskFactory => taskFactory.Invoke())
-            .ToArray();
+        private readonly int _concurrentRequests = Math.Min(concurrentRequests, totalRequests);
 
-        await Task.WhenAll(workerTasks);
-        await updateProgressTask;
-
-        return new LoadTestResult(requestResults);
-
-        async Task ProcessRequestsAsync()
+        public async Task<LoadTestResult> PerformAsync(IProgress progress)
         {
-            while (remainingRequests.TryDecrement())
+            var remainingRequests = new ConcurrentCounter(totalRequests);
+            var requestResults = new ConcurrentBag<RequestResult>();
+
+            CheckConnection();
+
+            var updateProgressTask = UpdateProgressAsync();
+            var workerTasks = Enumerable.Repeat(ProcessRequestsAsync, _concurrentRequests)
+                .Select(taskFactory => taskFactory.Invoke())
+                .ToArray();
+
+            await Task.WhenAll(workerTasks);
+            await updateProgressTask;
+
+            return new LoadTestResult(requestResults);
+
+            async Task ProcessRequestsAsync()
             {
-                var requestResult = await ProcessRequestAsync();
-                requestResults.Add(requestResult);
+                while (remainingRequests.TryDecrement())
+                {
+                    var requestResult = await ProcessRequestAsync();
+                    requestResults.Add(requestResult);
+                }
             }
-        }
 
-        async Task UpdateProgressAsync()
-        {
-            await Task.Delay(UpdateProgressIntervalMilliseconds);
-            while (requestResults.Count < totalRequests)
+            async Task UpdateProgressAsync()
             {
-                progress.Report(requestResults.Count, totalRequests);
                 await Task.Delay(UpdateProgressIntervalMilliseconds);
+                while (requestResults.Count < totalRequests)
+                {
+                    progress.Report(requestResults.Count, totalRequests);
+                    await Task.Delay(UpdateProgressIntervalMilliseconds);
+                }
+
+                progress.Report(totalRequests, totalRequests);
+                progress.Complete();
             }
-
-            progress.Report(totalRequests, totalRequests);
-            progress.Complete();
         }
-    }
 
-    private async Task<RequestResult> ProcessRequestAsync()
-    {
-        var stopwatch = Stopwatch.StartNew();
-        try
+        private async Task<RequestResult> ProcessRequestAsync()
         {
-            var response = await httpClient.GetAsync(url);
-            stopwatch.Stop();
+            var stopwatch = Stopwatch.StartNew();
+            try
+            {
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                var response = await httpClient.SendAsync(request);
+                stopwatch.Stop();
 
-            return response.IsSuccessStatusCode ?
-                new RequestResult(stopwatch.Elapsed) :
-                new RequestResult(stopwatch.Elapsed, $"HTTP status {(int)response.StatusCode}");
+                return response.IsSuccessStatusCode
+                    ? new RequestResult(stopwatch.Elapsed)
+                    : new RequestResult(stopwatch.Elapsed, $"HTTP status {(int)response.StatusCode}");
+            }
+            catch (Exception exception)
+            {
+                stopwatch.Stop();
+                return new RequestResult(stopwatch.Elapsed, $"{exception.GetType().Name}: {exception.Message}");
+            }
         }
-        catch (Exception exception)
+
+        private void CheckConnection()
         {
-            stopwatch.Stop();
-            return new RequestResult(stopwatch.Elapsed, $"{exception.GetType().Name}: {exception.Message}");
+            httpClient.GetAsync(url);
         }
     }
 }
