@@ -1,0 +1,15 @@
+﻿{
+  "rules": [
+    {
+      "mustImplement": {
+        "forbidden": false,
+        "forTypes": {
+          "name": "*ProgressBar"
+        },
+        "interface": {
+            "name": "IProgress"
+        }
+      }
+    }
+  ]
+}
