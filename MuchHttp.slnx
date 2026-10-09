@@ -1,3 +1,4 @@
 <Solution>
+    <Project Path="MuchHttp.Analyzers/MuchHttp.Analyzers.csproj"/>
     <Project Path="MuchHttp/MuchHttp.csproj"/>
 </Solution>
