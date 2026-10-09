@@ -1,0 +1,11 @@
+# Avoid excessive inheritance
+CA1501: 2
+
+# Avoid excessive complexity
+CA1502: 8
+
+# Avoid unmaintainable code
+CA1505: 30
+
+# Avoid excessive class coupling
+CA1506: 30

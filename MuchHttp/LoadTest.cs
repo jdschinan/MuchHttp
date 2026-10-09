@@ -14,6 +14,8 @@ public class LoadTest(HttpClient httpClient, Uri url, int concurrentRequests, in
         var remainingRequests = new ConcurrentCounter(totalRequests);
         var requestResults = new ConcurrentBag<RequestResult>();
 
+        await CheckConnectionAsync();
+
         var updateProgressTask = UpdateProgressAsync();
         var workerTasks = Enumerable.Repeat(ProcessRequestsAsync, _concurrentRequests)
             .Select(taskFactory => taskFactory.Invoke())
@@ -52,17 +54,23 @@ public class LoadTest(HttpClient httpClient, Uri url, int concurrentRequests, in
         var stopwatch = Stopwatch.StartNew();
         try
         {
-            var response = await httpClient.GetAsync(url);
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            var response = await httpClient.SendAsync(request);
             stopwatch.Stop();
 
-            return response.IsSuccessStatusCode ?
-                new RequestResult(stopwatch.Elapsed) :
-                new RequestResult(stopwatch.Elapsed, $"HTTP status {(int)response.StatusCode}");
+            return response.IsSuccessStatusCode
+                ? new RequestResult(stopwatch.Elapsed)
+                : new RequestResult(stopwatch.Elapsed, $"HTTP status {(int)response.StatusCode}");
         }
         catch (Exception exception)
         {
             stopwatch.Stop();
             return new RequestResult(stopwatch.Elapsed, $"{exception.GetType().Name}: {exception.Message}");
         }
+    }
+
+    private async Task CheckConnectionAsync()
+    {
+        await httpClient.GetAsync(url);
     }
 }

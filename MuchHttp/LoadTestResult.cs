@@ -34,6 +34,6 @@ public class LoadTestResult
 
     public IEnumerable<AggregatedError> AggregatedErrors => _requestResults
         .Where(requestResult => !requestResult.IsSuccessful)
-        .GroupBy(requestResult => requestResult.ErrorMessage!)
+        .GroupBy(requestResult => requestResult.ErrorMessage!, StringComparer.Ordinal)
         .Select(group => new AggregatedError(group.Key, group.Count()));
 }
